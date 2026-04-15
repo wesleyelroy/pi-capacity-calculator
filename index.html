@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PI Planning — Team Capacity Calculator</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --primary:       #5E2D8E;
+            --primary-dark:  #3D1A6E;
+            --primary-light: #9B6BD4;
+            --accent:        #3B9AD9;
+            --bg:            #F4F6FB;
+            --card:          #FFFFFF;
+            --border:        #E2E8F0;
+            --text:          #1A2340;
+            --text-muted:    #6B7A99;
+            --success:       #22C55E;
+            --warning:       #F59E0B;
+            --danger:        #EF4444;
+            --radius:        12px;
+            --shadow:        0 2px 12px rgba(94, 45, 142, 0.08);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* ── Header ────────────────────────────────── */
+        header {
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 60%, var(--primary-light) 100%);
+            color: white;
+            padding: 22px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 20px rgba(61, 26, 110, 0.35);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        header h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
+        header p  { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+        .header-actions { display: flex; gap: 10px; }
+
+        /* ── Layout ─────────────────────────────────── */
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 28px 24px 48px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* ── Cards ──────────────────────────────────── */
+        .card {
+            background: var(--card);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        .card-header {
+            padding: 18px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #FAFBFF;
+        }
+        .card-header h2 { font-size: 15px; font-weight: 700; color: var(--primary-dark); display: flex; align-items: center; gap: 0; }
+        .card-body  { padding: 24px; }
+
+        .section-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px; height: 26px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            font-size: 12px;
+            font-weight: 700;
+            margin-right: 10px;
+            flex-shrink: 0;
+        }
+
+        /* ── Forms ──────────────────────────────────── */
+        .form-group { margin-bottom: 16px; }
+        label {
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            margin-bottom: 6px;
+        }
+        input[type="text"],
+        input[type="number"],
+        input[type="date"],
+        select {
+            width: 100%;
+            padding: 9px 13px;
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            color: var(--text);
+            background: white;
+            transition: border-color 0.15s, box-shadow 0.15s;
+            outline: none;
+            font-family: inherit;
+        }
+        input:focus, select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(94, 45, 142, 0.12);
+        }
+
+        /* ── Buttons ────────────────────────────────── */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 9px 18px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.15s;
+            font-family: inherit;
+            white-space: nowrap;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(94,45,142,0.25); }
+        .btn-ghost {
+            background: transparent;
+            border: 1.5px solid rgba(255,255,255,0.35);
+            color: rgba(255,255,255,0.9);
+        }
+        .btn-ghost:hover { background: rgba(255,255,255,0.12); }
+        .btn-danger {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 6px 8px;
+            font-size: 15px;
+            line-height: 1;
+            border-radius: 6px;
+        }
+        .btn-danger:hover { color: var(--danger); background: #FEF2F2; }
+
+        /* ── Info box ───────────────────────────────── */
+        .info-box {
+            background: #EDE9FE;
+            border-left: 4px solid var(--primary);
+            padding: 11px 15px;
+            border-radius: 0 8px 8px 0;
+            font-size: 13px;
+            color: var(--primary-dark);
+            margin-bottom: 18px;
+            line-height: 1.5;
+        }
+
+        /* ── Team member list ───────────────────────── */
+        .members-list { margin-bottom: 8px; }
+        .member-row {
+            display: grid;
+            grid-template-columns: 1fr 160px 150px 40px;
+            gap: 10px;
+            align-items: center;
+            padding: 9px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .member-row:last-child { border-bottom: none; }
+        .member-name-cell {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+        .member-name-cell span {
+            font-weight: 500;
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .avatar {
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            color: white;
+            font-size: 11px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .avatar-sm { width: 26px; height: 26px; font-size: 10px; }
+
+        /* Role badge */
+        .role-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 9px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+        .role-Developer   { background: #EDE9FE; color: #5B21B6; }
+        .role-Tester      { background: #DBEAFE; color: #1D4ED8; }
+        .role-ScrumMaster { background: #FEF3C7; color: #92400E; }
+        .role-ProductOwner{ background: #FCE7F3; color: #9D174D; }
+
+        /* ── Add member form ────────────────────────── */
+        .add-member-form {
+            display: grid;
+            grid-template-columns: 1fr 150px 100px auto;
+            gap: 10px;
+            align-items: end;
+            padding-top: 16px;
+            border-top: 1px dashed var(--border);
+            margin-top: 6px;
+        }
+        .add-member-form .form-group { margin-bottom: 0; }
+
+        /* ── Days/week cell ─────────────────────────── */
+        .days-week-cell {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .days-week-cell input {
+            width: 56px !important;
+            text-align: center;
+            padding: 6px 8px !important;
+            font-size: 13px !important;
+        }
+        .days-week-cell .dgn-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+        .pts-chip {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            background: #EDE9FE;
+            color: var(--primary);
+            white-space: nowrap;
+        }
+
+        /* ── PI config grid ─────────────────────────── */
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        /* ── Radio options ──────────────────────────── */
+        .radio-group { display: flex; gap: 10px; }
+        .radio-option { flex: 1; position: relative; }
+        .radio-option input { position: absolute; opacity: 0; width: 0; height: 0; }
+        .radio-option label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            text-transform: none;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text);
+            letter-spacing: 0;
+            transition: all 0.15s;
+        }
+        .radio-option input:checked + label {
+            border-color: var(--primary);
+            background: #F4EEFF;
+            color: var(--primary);
+            font-weight: 600;
+        }
+        .radio-dot {
+            width: 16px; height: 16px;
+            border-radius: 50%;
+            border: 2px solid currentColor;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .radio-option input:checked + label .radio-dot::after {
+            content: '';
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--primary);
+        }
+
+        /* ── Sprint cards grid ──────────────────────── */
+        .sprints-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+            gap: 16px;
+        }
+
+        .sprint-card {
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            background: white;
+            transition: box-shadow 0.15s;
+        }
+        .sprint-card:hover { box-shadow: 0 4px 18px rgba(94,45,142,0.1); }
+
+        .sprint-card-header {
+            background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+            color: white;
+            padding: 14px 18px;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .sprint-name-input {
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            font-size: 15px;
+            font-weight: 700;
+            width: 140px;
+            outline: none;
+            padding: 0 0 2px;
+            font-family: inherit;
+        }
+        .sprint-name-input::placeholder { color: rgba(255,255,255,0.5); }
+        .sprint-dates-display { font-size: 11px; opacity: 0.75; margin-top: 4px; }
+
+        .capacity-chip {
+            background: rgba(255,255,255,0.18);
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 20px;
+            padding: 4px 13px;
+            font-size: 15px;
+            font-weight: 700;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        /* Sprint date inputs row */
+        .sprint-dates-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .sprint-date-field {
+            padding: 10px 14px;
+        }
+        .sprint-date-field:first-child { border-right: 1px solid var(--border); }
+        .sprint-date-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        .sprint-date-field input {
+            padding: 5px 8px;
+            font-size: 12px;
+        }
+
+        /* Sprint member rows */
+        .sprint-card-body { padding: 12px 16px; }
+        .sprint-member-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 7px 0;
+            border-bottom: 1px solid var(--border);
+            gap: 10px;
+        }
+        .sprint-member-row:last-child { border-bottom: none; }
+        .vacation-wrap {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+        .vacation-label { font-size: 11px; color: var(--text-muted); }
+        .vacation-input {
+            width: 58px !important;
+            text-align: center;
+            padding: 5px 6px !important;
+            font-size: 13px !important;
+        }
+
+        .deduction-bar {
+            margin-top: 10px;
+            padding: 8px 11px;
+            background: #FFFBEB;
+            border: 1px solid #FDE68A;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #92400E;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* ── Overview table ─────────────────────────── */
+        table.overview {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table.overview th {
+            background: var(--primary-dark);
+            color: white;
+            padding: 11px 16px;
+            text-align: left;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        table.overview td {
+            padding: 11px 16px;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+            vertical-align: middle;
+        }
+        table.overview tr:last-child td { border-bottom: none; }
+        table.overview tbody tr:nth-child(even) td { background: #FAFBFF; }
+        .total-row td {
+            background: #F0EBF8 !important;
+            font-weight: 700;
+            border-top: 2px solid var(--primary);
+        }
+
+        .pts-value { font-weight: 700; font-size: 15px; }
+        .pts-high    { color: var(--success); }
+        .pts-medium  { color: var(--warning); }
+        .pts-low     { color: var(--danger); }
+
+        .progress-bar {
+            background: #E8ECF0;
+            border-radius: 20px;
+            height: 7px;
+            width: 90px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            border-radius: 20px;
+            transition: width 0.3s;
+        }
+
+        /* ── Empty state ────────────────────────────── */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+        }
+        .empty-state-icon { font-size: 38px; margin-bottom: 10px; }
+        .empty-state p { font-size: 14px; }
+
+        /* ── Print ──────────────────────────────────── */
+        @media print {
+            header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .no-print { display: none !important; }
+            body { background: white; }
+            .card { box-shadow: none; border: 1px solid #ccc; }
+            .sprint-card { page-break-inside: avoid; }
+            .sprint-card-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            table.overview th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .total-row td { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+
+        @media (max-width: 640px) {
+            header { padding: 16px 20px; }
+            header h1 { font-size: 16px; }
+            .container { padding: 16px; }
+            .member-row { grid-template-columns: 1fr auto auto 36px; }
+            .add-member-form { grid-template-columns: 1fr 1fr; }
+            .sprints-grid { grid-template-columns: 1fr; }
+            .config-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div>
+        <h1>PI Planning &mdash; Team Capacity Calculator</h1>
+        <p>SAFe&reg; Scaled Agile Framework &bull; Data wordt lokaal opgeslagen</p>
+    </div>
+    <div class="header-actions no-print">
+        <button class="btn btn-ghost" onclick="resetAll()">&#8635; Reset</button>
+        <button class="btn btn-ghost" onclick="window.print()">&#128438; Print / PDF</button>
+    </div>
+</header>
+
+<div class="container">
+
+    <!-- ① Team samenstelling -->
+    <div class="card">
+        <div class="card-header">
+            <h2><span class="section-badge">1</span>Team samenstelling</h2>
+            <div id="team-summary" style="font-size: 13px; color: var(--text-muted);"></div>
+        </div>
+        <div class="card-body">
+            <div class="config-grid" style="margin-bottom: 20px;">
+                <div class="form-group" style="margin-bottom:0;">
+                    <label>Teamnaam</label>
+                    <input type="text" id="team-name" placeholder="bijv. Team Phoenix" oninput="saveState()" />
+                </div>
+            </div>
+
+            <div class="info-box">
+                &#128161; <strong>SAFe richtlijn:</strong> Scrum Masters en Product Owners worden <strong>uitgesloten</strong> van de capacity berekening. Basis: <strong>8 punten per fulltime teamlid</strong> — parttimers worden automatisch naar rato berekend (bijv. 4 dgn/week = 6,4 pts).
+            </div>
+
+            <div class="members-list" id="members-list"></div>
+
+            <div class="add-member-form no-print">
+                <div class="form-group">
+                    <label>Naam teamlid</label>
+                    <input type="text" id="new-name" placeholder="Voornaam Achternaam"
+                           onkeydown="if(event.key==='Enter') addMember()" />
+                </div>
+                <div class="form-group">
+                    <label>Rol</label>
+                    <select id="new-role">
+                        <option value="Developer">Developer</option>
+                        <option value="Tester">Tester</option>
+                        <option value="ScrumMaster">Scrum Master</option>
+                        <option value="ProductOwner">Product Owner</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Dagen/week</label>
+                    <input type="number" id="new-days" min="1" max="5" step="0.5" value="5"
+                           style="text-align:center;" />
+                </div>
+                <button class="btn btn-primary" onclick="addMember()">+ Toevoegen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ② PI configuratie -->
+    <div class="card">
+        <div class="card-header">
+            <h2><span class="section-badge">2</span>PI configuratie</h2>
+        </div>
+        <div class="card-body">
+            <div class="config-grid">
+                <div class="form-group">
+                    <label>Aantal sprints</label>
+                    <input type="number" id="sprint-count" min="1" max="12" value="5"
+                           oninput="updateSprintCount()" />
+                </div>
+                <div class="form-group">
+                    <label>Basisberekening</label>
+                    <div class="radio-group">
+                        <div class="radio-option">
+                            <input type="radio" id="basis-new" name="basis" value="new" checked
+                                   onchange="updateBasis()">
+                            <label for="basis-new">
+                                <span class="radio-dot"></span>Nieuw team (8 pts)
+                            </label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" id="basis-velocity" name="basis" value="velocity"
+                                   onchange="updateBasis()">
+                            <label for="basis-velocity">
+                                <span class="radio-dot"></span>Historische velocity
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group" id="velocity-field" style="display:none;">
+                    <label>Gemiddelde velocity (pts/sprint)</label>
+                    <input type="number" id="hist-velocity" min="0" value="40"
+                           oninput="saveState(); renderOverview(); renderSprints()" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ③ Vrije dagen per sprint -->
+    <div class="card">
+        <div class="card-header">
+            <h2><span class="section-badge">3</span>Sprints &amp; vrije dagen</h2>
+            <span style="font-size: 12px; color: var(--text-muted);">Naam sprint is aanpasbaar &bull; &minus;1 pt per vrije dag</span>
+        </div>
+        <div class="card-body" style="padding: 20px;">
+            <div class="sprints-grid" id="sprints-grid"></div>
+        </div>
+    </div>
+
+    <!-- ④ PI Overzicht -->
+    <div class="card">
+        <div class="card-header">
+            <h2><span class="section-badge">4</span>PI Overzicht</h2>
+            <div id="pi-total" style="font-size: 14px; font-weight: 700; color: var(--primary);"></div>
+        </div>
+        <div id="overview-container"></div>
+    </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+let state = {
+    teamName: '',
+    basis: 'new',
+    histVelocity: 40,
+    members: [],
+    sprints: []
+};
+let nextId = 1;
+
+// ═══════════════════════════════════════════════
+// AVATAR
+// ═══════════════════════════════════════════════
+const COLORS = ['#5E2D8E','#3B9AD9','#22C55E','#F59E0B','#EF4444','#8B5CF6','#06B6D4','#EC4899','#14B8A6','#6366F1'];
+function avatarColor(id) { return COLORS[(id - 1) % COLORS.length]; }
+function initials(name) {
+    return name.trim().split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 2);
+}
+
+// ═══════════════════════════════════════════════
+// CAPACITY
+// ═══════════════════════════════════════════════
+function capacityMembers() {
+    return state.members.filter(m => m.role === 'Developer' || m.role === 'Tester');
+}
+
+function fmtPts(pts) {
+    return pts % 1 === 0 ? String(pts) : pts.toFixed(1);
+}
+
+function memberBasePoints(m) {
+    const days = parseFloat(m.daysPerWeek) || 5;
+    return Math.round((days / 5) * 8 * 10) / 10;
+}
+
+function baseCapacity() {
+    if (state.basis === 'velocity') {
+        return parseInt(document.getElementById('hist-velocity')?.value ?? state.histVelocity) || 0;
+    }
+    return capacityMembers().reduce((s, m) => s + memberBasePoints(m), 0);
+}
+
+function sprintCapacity(sprint) {
+    const base = baseCapacity();
+    const deduction = capacityMembers().reduce((s, m) => s + (parseFloat(sprint.vacDays[m.id]) || 0), 0);
+    return Math.max(0, Math.round((base - deduction) * 10) / 10);
+}
+
+function totalVacation(sprint) {
+    return capacityMembers().reduce((s, m) => s + (parseFloat(sprint.vacDays[m.id]) || 0), 0);
+}
+
+function ptsClass(capacity, base) {
+    if (base === 0) return '';
+    const r = capacity / base;
+    if (r >= 0.85) return 'pts-high';
+    if (r >= 0.60) return 'pts-medium';
+    return 'pts-low';
+}
+
+function progressColor(capacity, base) {
+    if (base === 0) return '#E8ECF0';
+    const r = capacity / base;
+    if (r >= 0.85) return 'var(--success)';
+    if (r >= 0.60) return 'var(--warning)';
+    return 'var(--danger)';
+}
+
+// ═══════════════════════════════════════════════
+// SPRINT MANAGEMENT
+// ═══════════════════════════════════════════════
+function makeSprint(index) {
+    const sprint = { id: Date.now() + index, name: `Sprint ${index + 1}`, startDate: '', endDate: '', vacDays: {} };
+    state.members.forEach(m => { sprint.vacDays[m.id] = 0; });
+    return sprint;
+}
+
+function updateSprintCount() {
+    const count = Math.max(1, Math.min(12, parseInt(document.getElementById('sprint-count').value) || 5));
+    while (state.sprints.length < count) {
+        state.sprints.push(makeSprint(state.sprints.length));
+    }
+    if (state.sprints.length > count) {
+        state.sprints = state.sprints.slice(0, count);
+    }
+    saveState();
+    renderAll();
+}
+
+function updateBasis() {
+    state.basis = document.querySelector('input[name="basis"]:checked').value;
+    document.getElementById('velocity-field').style.display = state.basis === 'velocity' ? 'block' : 'none';
+    saveState();
+    renderSprints();
+    renderOverview();
+}
+
+// ═══════════════════════════════════════════════
+// MEMBER MANAGEMENT
+// ═══════════════════════════════════════════════
+function addMember() {
+    const nameEl = document.getElementById('new-name');
+    const roleEl = document.getElementById('new-role');
+    const name = nameEl.value.trim();
+    if (!name) {
+        nameEl.focus();
+        nameEl.style.borderColor = 'var(--danger)';
+        nameEl.style.boxShadow = '0 0 0 3px rgba(239,68,68,0.15)';
+        setTimeout(() => { nameEl.style.borderColor = ''; nameEl.style.boxShadow = ''; }, 1800);
+        return;
+    }
+    const daysEl = document.getElementById('new-days');
+    const days = Math.min(5, Math.max(0.5, parseFloat(daysEl.value) || 5));
+    const member = { id: nextId++, name, role: roleEl.value, daysPerWeek: days };
+    state.members.push(member);
+    state.sprints.forEach(sp => { sp.vacDays[member.id] = 0; });
+    nameEl.value = '';
+    daysEl.value = '5';
+    nameEl.focus();
+    saveState();
+    renderAll();
+}
+
+function removeMember(id) {
+    state.members = state.members.filter(m => m.id !== id);
+    state.sprints.forEach(sp => { delete sp.vacDays[id]; });
+    saveState();
+    renderAll();
+}
+
+function changeMemberRole(id, role) {
+    const m = state.members.find(m => m.id === id);
+    if (m) { m.role = role; saveState(); renderAll(); }
+}
+
+function changeMemberDays(id, val) {
+    const m = state.members.find(m => m.id === id);
+    if (m) {
+        m.daysPerWeek = Math.min(5, Math.max(0.5, parseFloat(val) || 5));
+        saveState(); renderAll();
+    }
+}
+
+// ═══════════════════════════════════════════════
+// UPDATE HANDLERS
+// ═══════════════════════════════════════════════
+function setVacation(sprintId, memberId, val) {
+    const sp = state.sprints.find(s => s.id === sprintId);
+    if (sp) { sp.vacDays[memberId] = Math.max(0, parseInt(val) || 0); saveState(); renderSprints(); renderOverview(); }
+}
+
+function setSprintName(sprintId, val) {
+    const sp = state.sprints.find(s => s.id === sprintId);
+    if (sp) { sp.name = val; saveState(); renderOverview(); }
+}
+
+function setSprintDate(sprintId, field, val) {
+    const sp = state.sprints.find(s => s.id === sprintId);
+    if (sp) { sp[field] = val; saveState(); renderSprints(); renderOverview(); }
+}
+
+// ═══════════════════════════════════════════════
+// RENDER — MEMBERS
+// ═══════════════════════════════════════════════
+function renderMembers() {
+    const el = document.getElementById('members-list');
+    if (state.members.length === 0) {
+        el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">&#128101;</div><p>Nog geen teamleden toegevoegd</p></div>`;
+    } else {
+        el.innerHTML = state.members.map(m => {
+            const isExcluded = m.role === 'ScrumMaster' || m.role === 'ProductOwner';
+            const pts = memberBasePoints(m);
+            return `
+            <div class="member-row">
+                <div class="member-name-cell">
+                    <div class="avatar" style="background:${avatarColor(m.id)}">${initials(m.name)}</div>
+                    <span>${m.name}</span>
+                    ${isExcluded ? `<span style="font-size:11px;color:var(--text-muted);">(uitgesloten)</span>` : ''}
+                </div>
+                <div class="days-week-cell">
+                    <input type="number" min="0.5" max="5" step="0.5"
+                           value="${m.daysPerWeek ?? 5}"
+                           onchange="changeMemberDays(${m.id}, this.value)"
+                           ${isExcluded ? 'disabled style="opacity:0.4;"' : ''} />
+                    <span class="dgn-label">dgn/wk</span>
+                    ${!isExcluded ? `<span class="pts-chip">${fmtPts(pts)} pts</span>` : ''}
+                </div>
+                <select onchange="changeMemberRole(${m.id}, this.value)" style="width:auto; font-size:13px; padding:6px 10px;">
+                    <option value="Developer"    ${m.role==='Developer'    ? 'selected':''}>Developer</option>
+                    <option value="Tester"       ${m.role==='Tester'       ? 'selected':''}>Tester</option>
+                    <option value="ScrumMaster"  ${m.role==='ScrumMaster'  ? 'selected':''}>Scrum Master</option>
+                    <option value="ProductOwner" ${m.role==='ProductOwner' ? 'selected':''}>Product Owner</option>
+                </select>
+                <button class="btn btn-danger no-print" onclick="removeMember(${m.id})" title="Verwijder">&#215;</button>
+            </div>`;
+        }).join('');
+    }
+
+    // Summary
+    const cap = capacityMembers();
+    const excl = state.members.filter(m => m.role==='ScrumMaster'||m.role==='ProductOwner');
+    const summEl = document.getElementById('team-summary');
+    if (state.members.length > 0) {
+        const totalPts = cap.reduce((s, m) => s + memberBasePoints(m), 0);
+        summEl.innerHTML = `<span style="color:var(--primary);font-weight:700;">${cap.length} in capacity &bull; ${fmtPts(Math.round(totalPts * 10) / 10)} pts/sprint basis</span>`
+            + (excl.length ? `<span style="margin-left:12px;color:var(--text-muted);">${excl.length} uitgesloten</span>` : '');
+    } else {
+        summEl.textContent = '';
+    }
+}
+
+// ═══════════════════════════════════════════════
+// RENDER — SPRINTS
+// ═══════════════════════════════════════════════
+function renderSprints() {
+    const grid = document.getElementById('sprints-grid');
+    const capMembers = capacityMembers();
+
+    grid.innerHTML = state.sprints.map(sp => {
+        const cap  = sprintCapacity(sp);
+        const base = baseCapacity();
+        const vacTot = totalVacation(sp);
+
+        let dateDisplay = 'Geen periode ingesteld';
+        if (sp.startDate && sp.endDate) {
+            const fmt = d => new Date(d).toLocaleDateString('nl-NL', { day:'numeric', month:'short' });
+            dateDisplay = `${fmt(sp.startDate)} &ndash; ${fmt(sp.endDate)}`;
+        } else if (sp.startDate) {
+            const fmt = d => new Date(d).toLocaleDateString('nl-NL', { day:'numeric', month:'short', year:'numeric' });
+            dateDisplay = `Vanaf ${fmt(sp.startDate)}`;
+        }
+
+        const memberRows = capMembers.length > 0
+            ? capMembers.map(m => {
+                const mPts = memberBasePoints(m);
+                const vac  = parseFloat(sp.vacDays[m.id]) || 0;
+                const net  = Math.max(0, Math.round((mPts - vac) * 10) / 10);
+                return `
+                <div class="sprint-member-row">
+                    <div class="member-name-cell">
+                        <div class="avatar avatar-sm" style="background:${avatarColor(m.id)}">${initials(m.name)}</div>
+                        <div>
+                            <span style="font-size:13px;font-weight:500;">${m.name}</span>
+                            <div style="font-size:11px;color:var(--text-muted);margin-top:1px;">
+                                basis ${fmtPts(mPts)} pts${vac > 0 ? ` &rarr; <strong style="color:var(--primary)">${fmtPts(net)} pts</strong>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="vacation-wrap">
+                        <span class="vacation-label">vrije dagen</span>
+                        <input type="number" class="vacation-input" min="0" max="14"
+                               value="${vac}"
+                               onchange="setVacation(${sp.id}, ${m.id}, this.value)" />
+                    </div>
+                </div>`;
+            }).join('')
+            : `<div style="padding:14px 0;text-align:center;color:var(--text-muted);font-size:13px;">Voeg teamleden toe</div>`;
+
+        return `
+            <div class="sprint-card">
+                <div class="sprint-card-header">
+                    <div style="min-width:0;">
+                        <input class="sprint-name-input" type="text"
+                               value="${sp.name}"
+                               onchange="setSprintName(${sp.id}, this.value)"
+                               placeholder="Sprint naam" />
+                        <div class="sprint-dates-display">${dateDisplay}</div>
+                    </div>
+                    <div class="capacity-chip">${cap} pts</div>
+                </div>
+                <div class="sprint-dates-row">
+                    <div class="sprint-date-field">
+                        <div class="sprint-date-label">Startdatum</div>
+                        <input type="date" value="${sp.startDate}"
+                               onchange="setSprintDate(${sp.id}, 'startDate', this.value)" />
+                    </div>
+                    <div class="sprint-date-field">
+                        <div class="sprint-date-label">Einddatum</div>
+                        <input type="date" value="${sp.endDate}"
+                               onchange="setSprintDate(${sp.id}, 'endDate', this.value)" />
+                    </div>
+                </div>
+                <div class="sprint-card-body">
+                    ${memberRows}
+                    ${vacTot > 0 ? `
+                        <div class="deduction-bar">
+                            <span>Totaal vrije dagen: ${vacTot}</span>
+                            <span><strong>&minus;${fmtPts(vacTot)} pts</strong></span>
+                        </div>` : ''}
+                </div>
+            </div>`;
+    }).join('');
+}
+
+// ═══════════════════════════════════════════════
+// RENDER — OVERVIEW TABLE
+// ═══════════════════════════════════════════════
+function renderOverview() {
+    const container = document.getElementById('overview-container');
+    const totalEl   = document.getElementById('pi-total');
+
+    if (state.sprints.length === 0 || state.members.length === 0) {
+        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">&#128202;</div><p>Vul teamleden en sprints in om het overzicht te zien</p></div>`;
+        totalEl.textContent = '';
+        return;
+    }
+
+    const base = baseCapacity();
+    let totalCap = 0, totalVac = 0;
+
+    const rows = state.sprints.map(sp => {
+        const cap = sprintCapacity(sp);
+        const vac = totalVacation(sp);
+        totalCap += cap;
+        totalVac += vac;
+
+        let dateStr = '&mdash;';
+        if (sp.startDate && sp.endDate) {
+            const fmt = d => new Date(d).toLocaleDateString('nl-NL', { day:'numeric', month:'short', year:'numeric' });
+            dateStr = `${fmt(sp.startDate)} &ndash; ${fmt(sp.endDate)}`;
+        }
+
+        const cls = ptsClass(cap, base);
+        const pct = base > 0 ? Math.min(100, Math.round(cap / base * 100)) : 0;
+
+        return `<tr>
+            <td style="font-weight:600;">${sp.name}</td>
+            <td style="color:var(--text-muted);font-size:13px;">${dateStr}</td>
+            <td>${fmtPts(base)} pts</td>
+            <td style="color:var(--warning);">${vac > 0 ? `&minus;${fmtPts(vac)} pts` : '&mdash;'}</td>
+            <td><span class="pts-value ${cls}">${fmtPts(cap)} pts</span></td>
+            <td>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width:${pct}%;background:${progressColor(cap,base)};"></div>
+                    </div>
+                    <span style="font-size:12px;color:var(--text-muted);min-width:34px;">${pct}%</span>
+                </div>
+            </td>
+        </tr>`;
+    }).join('');
+
+    container.innerHTML = `
+        <table class="overview">
+            <thead>
+                <tr>
+                    <th>Sprint</th>
+                    <th>Periode</th>
+                    <th>Basis capacity</th>
+                    <th>Aftrek</th>
+                    <th>Netto capacity</th>
+                    <th>Bezetting</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rows}
+                <tr class="total-row">
+                    <td colspan="2">&#931; Totaal PI</td>
+                    <td>${fmtPts(Math.round(base * state.sprints.length * 10) / 10)} pts</td>
+                    <td style="color:var(--warning);">${totalVac > 0 ? `&minus;${fmtPts(Math.round(totalVac * 10) / 10)} pts` : '&mdash;'}</td>
+                    <td><span class="pts-value" style="color:var(--primary);">${fmtPts(Math.round(totalCap * 10) / 10)} pts</span></td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>`;
+
+    totalEl.textContent = `Totale PI capacity: ${fmtPts(Math.round(totalCap * 10) / 10)} pts`;
+}
+
+// ═══════════════════════════════════════════════
+// RENDER ALL
+// ═══════════════════════════════════════════════
+function renderAll() {
+    renderMembers();
+    renderSprints();
+    renderOverview();
+}
+
+// ═══════════════════════════════════════════════
+// PERSISTENCE
+// ═══════════════════════════════════════════════
+function saveState() {
+    const tn = document.getElementById('team-name');
+    if (tn) state.teamName = tn.value;
+    const hv = document.getElementById('hist-velocity');
+    if (hv) state.histVelocity = parseInt(hv.value) || 40;
+    const basisEl = document.querySelector('input[name="basis"]:checked');
+    if (basisEl) state.basis = basisEl.value;
+
+    try {
+        localStorage.setItem('pi-cap-state', JSON.stringify(state));
+        localStorage.setItem('pi-cap-nextid', String(nextId));
+    } catch(e) { /* storage might be unavailable */ }
+}
+
+function loadState() {
+    try {
+        const raw = localStorage.getItem('pi-cap-state');
+        const rid = localStorage.getItem('pi-cap-nextid');
+        if (raw) {
+            state  = JSON.parse(raw);
+            nextId = parseInt(rid || '1');
+
+            const tn = document.getElementById('team-name');
+            if (tn) tn.value = state.teamName || '';
+
+            const sc = document.getElementById('sprint-count');
+            if (sc) sc.value = state.sprints.length || 5;
+
+            const bEl = document.querySelector(`input[name="basis"][value="${state.basis}"]`);
+            if (bEl) { bEl.checked = true; }
+
+            const vf = document.getElementById('velocity-field');
+            const hv = document.getElementById('hist-velocity');
+            if (state.basis === 'velocity' && vf && hv) {
+                vf.style.display = 'block';
+                hv.value = state.histVelocity || 40;
+            }
+            return;
+        }
+    } catch(e) { /* ignore */ }
+
+    // Default: 5 empty sprints
+    state.sprints = Array.from({ length: 5 }, (_, i) => makeSprint(i));
+}
+
+function resetAll() {
+    if (!confirm('Weet je zeker dat je alles wilt resetten? Alle data gaat verloren.')) return;
+    localStorage.removeItem('pi-cap-state');
+    localStorage.removeItem('pi-cap-nextid');
+    state  = { teamName:'', basis:'new', histVelocity:40, members:[], sprints:[] };
+    nextId = 1;
+
+    document.getElementById('team-name').value  = '';
+    document.getElementById('sprint-count').value = 5;
+    document.getElementById('basis-new').checked  = true;
+    document.getElementById('velocity-field').style.display = 'none';
+    state.sprints = Array.from({ length: 5 }, (_, i) => makeSprint(i));
+    renderAll();
+}
+
+// ═══════════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════════
+loadState();
+renderAll();
+</script>
+</body>
+</html>

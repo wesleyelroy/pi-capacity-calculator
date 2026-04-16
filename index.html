@@ -597,6 +597,18 @@
                            oninput="saveState(); renderOverview(); renderSprints()" />
                 </div>
             </div>
+            <div style="border-top: 1px dashed var(--border); margin-top: 4px; padding-top: 16px; display: flex; flex-direction: column; gap: 14px;">
+                <div class="form-group" style="margin-bottom:0; max-width: 320px;">
+                    <label>Reservering nieuwe kenmerken (%)</label>
+                    <input type="number" id="pct-new-features" min="0" max="100" value="20"
+                           oninput="saveState(); renderOverview()" />
+                </div>
+                <div class="form-group" style="margin-bottom:0; max-width: 320px;">
+                    <label>Reservering bugs (%)</label>
+                    <input type="number" id="pct-bugs" min="0" max="100" value="10"
+                           oninput="saveState(); renderOverview()" />
+                </div>
+            </div>
         </div>
     </div>
 
@@ -630,6 +642,8 @@ let state = {
     teamName: '',
     basis: 'new',
     histVelocity: 40,
+    pctNewFeatures: 20,
+    pctBugs: 10,
     members: [],
     sprints: []
 };
@@ -933,13 +947,20 @@ function renderOverview() {
     }
 
     const base = baseCapacity();
-    let totalCap = 0, totalVac = 0;
+    const pctNF  = Math.min(100, Math.max(0, parseInt(document.getElementById('pct-new-features')?.value ?? state.pctNewFeatures) || 0));
+    const pctBug = Math.min(100, Math.max(0, parseInt(document.getElementById('pct-bugs')?.value ?? state.pctBugs) || 0));
+    let totalNetto = 0, totalVac = 0, totalNF = 0, totalBugs = 0;
 
     const rows = state.sprints.map(sp => {
-        const cap = sprintCapacity(sp);
-        const vac = totalVacation(sp);
-        totalCap += cap;
-        totalVac += vac;
+        const rawCap  = sprintCapacity(sp);   // basis - aftrek
+        const vac     = totalVacation(sp);
+        const nfPts   = Math.round(rawCap * pctNF  / 100 * 10) / 10;
+        const bugPts  = Math.round(rawCap * pctBug / 100 * 10) / 10;
+        const netto   = Math.max(0, Math.round((rawCap - nfPts - bugPts) * 10) / 10);
+        totalNetto += netto;
+        totalVac   += vac;
+        totalNF    += nfPts;
+        totalBugs  += bugPts;
 
         let dateStr = '&mdash;';
         if (sp.startDate && sp.endDate) {
@@ -947,19 +968,21 @@ function renderOverview() {
             dateStr = `${fmt(sp.startDate)} &ndash; ${fmt(sp.endDate)}`;
         }
 
-        const cls = ptsClass(cap, base);
-        const pct = base > 0 ? Math.min(100, Math.round(cap / base * 100)) : 0;
+        const cls = ptsClass(netto, base);
+        const pct = base > 0 ? Math.min(100, Math.round(netto / base * 100)) : 0;
 
         return `<tr>
             <td style="font-weight:600;">${sp.name}</td>
             <td style="color:var(--text-muted);font-size:13px;">${dateStr}</td>
             <td>${fmtPts(base)} pts</td>
             <td style="color:var(--warning);">${vac > 0 ? `&minus;${fmtPts(vac)} pts` : '&mdash;'}</td>
-            <td><span class="pts-value ${cls}">${fmtPts(cap)} pts</span></td>
+            <td><span style="font-size:13px;color:#3B9AD9;font-weight:600;">${fmtPts(nfPts)} pts</span></td>
+            <td><span style="font-size:13px;color:#EF4444;font-weight:600;">${fmtPts(bugPts)} pts</span></td>
+            <td><span class="pts-value ${cls}">${fmtPts(netto)} pts</span></td>
             <td>
                 <div style="display:flex;align-items:center;gap:8px;">
                     <div class="progress-bar">
-                        <div class="progress-fill" style="width:${pct}%;background:${progressColor(cap,base)};"></div>
+                        <div class="progress-fill" style="width:${pct}%;background:${progressColor(netto,base)};"></div>
                     </div>
                     <span style="font-size:12px;color:var(--text-muted);min-width:34px;">${pct}%</span>
                 </div>
@@ -975,6 +998,8 @@ function renderOverview() {
                     <th>Periode</th>
                     <th>Basis capacity</th>
                     <th>Aftrek</th>
+                    <th>Nieuwe kenmerken (${pctNF}%)</th>
+                    <th>Bugs (${pctBug}%)</th>
                     <th>Netto capacity</th>
                     <th>Bezetting</th>
                 </tr>
@@ -985,13 +1010,15 @@ function renderOverview() {
                     <td colspan="2">&#931; Totaal PI</td>
                     <td>${fmtPts(Math.round(base * state.sprints.length * 10) / 10)} pts</td>
                     <td style="color:var(--warning);">${totalVac > 0 ? `&minus;${fmtPts(Math.round(totalVac * 10) / 10)} pts` : '&mdash;'}</td>
-                    <td><span class="pts-value" style="color:var(--primary);">${fmtPts(Math.round(totalCap * 10) / 10)} pts</span></td>
+                    <td><span class="pts-value" style="color:#3B9AD9;">${fmtPts(Math.round(totalNF * 10) / 10)} pts</span></td>
+                    <td><span class="pts-value" style="color:#EF4444;">${fmtPts(Math.round(totalBugs * 10) / 10)} pts</span></td>
+                    <td><span class="pts-value" style="color:var(--primary);">${fmtPts(Math.round(totalNetto * 10) / 10)} pts</span></td>
                     <td></td>
                 </tr>
             </tbody>
         </table>`;
 
-    totalEl.textContent = `Totale PI capacity: ${fmtPts(Math.round(totalCap * 10) / 10)} pts`;
+    totalEl.textContent = `Totale PI capacity: ${fmtPts(Math.round(totalNetto * 10) / 10)} pts`;
 }
 
 // ═══════════════════════════════════════════════
@@ -1013,6 +1040,10 @@ function saveState() {
     if (hv) state.histVelocity = parseInt(hv.value) || 40;
     const basisEl = document.querySelector('input[name="basis"]:checked');
     if (basisEl) state.basis = basisEl.value;
+    const pnf = document.getElementById('pct-new-features');
+    if (pnf) state.pctNewFeatures = parseInt(pnf.value) ?? 20;
+    const pb = document.getElementById('pct-bugs');
+    if (pb) state.pctBugs = parseInt(pb.value) ?? 10;
 
     try {
         localStorage.setItem('pi-cap-state', JSON.stringify(state));
@@ -1043,6 +1074,11 @@ function loadState() {
                 vf.style.display = 'block';
                 hv.value = state.histVelocity || 40;
             }
+
+            const pnf = document.getElementById('pct-new-features');
+            if (pnf) pnf.value = state.pctNewFeatures ?? 20;
+            const pb = document.getElementById('pct-bugs');
+            if (pb) pb.value = state.pctBugs ?? 10;
             return;
         }
     } catch(e) { /* ignore */ }
@@ -1055,13 +1091,15 @@ function resetAll() {
     if (!confirm('Weet je zeker dat je alles wilt resetten? Alle data gaat verloren.')) return;
     localStorage.removeItem('pi-cap-state');
     localStorage.removeItem('pi-cap-nextid');
-    state  = { teamName:'', basis:'new', histVelocity:40, members:[], sprints:[] };
+    state  = { teamName:'', basis:'new', histVelocity:40, pctNewFeatures:20, pctBugs:10, members:[], sprints:[] };
     nextId = 1;
 
     document.getElementById('team-name').value  = '';
     document.getElementById('sprint-count').value = 5;
     document.getElementById('basis-new').checked  = true;
     document.getElementById('velocity-field').style.display = 'none';
+    document.getElementById('pct-new-features').value = 20;
+    document.getElementById('pct-bugs').value = 10;
     state.sprints = Array.from({ length: 5 }, (_, i) => makeSprint(i));
     renderAll();
 }

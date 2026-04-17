@@ -671,13 +671,16 @@ function fmtPts(pts) {
 
 function memberBasePoints(m) {
     const days = parseFloat(m.daysPerWeek) || 5;
+    if (state.basis === 'velocity') {
+        const vel      = parseInt(document.getElementById('hist-velocity')?.value ?? state.histVelocity) || 0;
+        const totalFTE = capacityMembers().reduce((s, cm) => s + (parseFloat(cm.daysPerWeek) || 5) / 5, 0) || 1;
+        const fte      = days / 5;
+        return Math.round((fte / totalFTE) * vel * 10) / 10;
+    }
     return Math.round((days / 5) * 8 * 10) / 10;
 }
 
 function baseCapacity() {
-    if (state.basis === 'velocity') {
-        return parseInt(document.getElementById('hist-velocity')?.value ?? state.histVelocity) || 0;
-    }
     return capacityMembers().reduce((s, m) => s + memberBasePoints(m), 0);
 }
 
